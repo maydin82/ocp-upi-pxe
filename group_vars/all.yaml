@@ -1,0 +1,83 @@
+---
+rhcos_version: 4.6
+rhcos_subversion: 47
+
+pxe_ip: 5.5.5.1
+infra_http:
+  address: 5.5.5.1
+  port: 8080
+
+
+base_dns_name: aydin.lab
+
+machine_net_gw: 10.10.10.1
+machine_net_mask: 255.255.255.192
+machine_network_cidr: 10.10.10.0/24
+machine_net_bond_name: bond1
+machine_net_vlan: 528
+
+
+
+dhcp_subnets:
+  - ip: 5.5.5.0
+    netmask: 255.255.255.0
+    domain_name_servers:
+      - 192.168.5.5
+      - 192.168.5.6
+
+
+http_host: openshift-bastion-machine
+
+dhcp_hosts:
+  - name: "master-1"
+    role: master
+    secondary_role: standard
+    mac: "dd:dd:dd:dd:dd:dd"
+    ip: 5.5.5.2
+    install_dev: /dev/sda
+    pxe_nic: eno7
+    machine_nics:
+      - ens3f0
+      - ens6f1
+    machine_ip: 10.10.10.2
+    ilo_ip: 10.141.88.138
+
+  - name: "master-2"
+    role: master
+    secondary_role: standard
+    mac: "d4:f5:ef:4a:5b:d6"
+    ip: 5.5.5.3
+    install_dev: /dev/sda
+    pxe_nic: eno7
+    machine_nics:
+      - ens3f0
+      - ens6f1
+    machine_ip: 10.10.10.3
+    ilo_ip: 10.141.88.139
+  - name: "avucpocpmaster-3"
+    role: master
+    secondary_role: standard
+    mac: "d4:f5:ef:4a:50:6a"
+    ip: 5.5.5.4
+    install_dev: /dev/sda
+    pxe_nic: eno7
+    machine_nics:
+      - ens3f0
+      - ens6f1
+    machine_ip: 10.10.10.4
+    ilo_ip: 10.141.88.140
+
+
+  - name: "worker-1"
+    role: worker
+    secondary_role: standard
+    mac: "d4:f5:ef:4a:d2:1e"
+    ip: 5.5.5.5
+    install_dev: /dev/sda
+    pxe_nic: eno7
+    machine_nics:
+      - ens3f0
+      - ens6f1
+    machine_ip: 10.10.10.5
+    ilo_ip: 10.141.88.141
+

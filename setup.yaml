@@ -1,0 +1,126 @@
+---
+# Prerequisits:
+# - subscription-manager register
+# Requires to download for task "Set up dhcp":
+# - Latest version from github of https://github.com/bertvv/ansible-role-dhcp.git
+- name: Set up OCP infra and deployment node
+  hosts: openshift-bastion-machine
+  become: true
+  tasks:
+
+    - name: DHCP
+      tags: dhcp
+      block:
+#        - name: Disable Firewalld daemon 
+#          service:
+#            name: firewalld
+#            state: stopped
+#            enabled: False
+
+        - name: Set up dhcp
+          import_role:
+            name: ansible-role-dhcp
+          vars:
+            dhcp_global_next_server: "{{ pxe_ip }}"
+
+        - name: Append iPXE related configurations
+          tags: dhcp_t
+          blockinfile:
+            marker: "## {mark} ipxe configuration  ##"
+            backup: yes
+            dest: /etc/dhcp/dhcpd.conf
+            block: |
+              {{ lookup('template', 'templates/dhcpd_ipxe.cfg.j2') }}
+
+        - name: Starting DHCPD service
+          service:
+            name: dhcpd
+            state: restarted
+
+
+    - name: Install, configure, and start Apache
+      block:
+        - name: install httpd
+          dnf:
+            name: httpd
+            state: present
+
+        - name: Set up conf file for httpd service on "{{ http_port }}"
+          template:
+            src: "templates/httpd.conf.j2"
+            dest: "/etc/httpd/conf/httpd.conf"
+
+        - name: Starting HTTPD service
+          service:
+            enabled: yes
+            name: httpd
+            state: restarted
+
+
+    - name: Fetch RHCOS files
+      get_url:
+        dest: /var/www/html/
+        url: "{{ item }}"
+      with_items:
+        - "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ rhcos_version }}/{{ rhcos_version }}.{{ rhcos_subversion }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-metal.x86_64.raw.gz"
+        - "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ rhcos_version }}/{{ rhcos_version }}.{{ rhcos_subversion }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-kernel-x86_64"
+        - "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ rhcos_version }}/{{ rhcos_version }}.{{ rhcos_subversion }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-initramfs.x86_64.img"
+        - "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ rhcos_version }}/{{ rhcos_version }}.{{ rhcos_subversion }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-rootfs.x86_64.img"
+      tags: images
+
+    - name: Install, configure, and start TFTP and PXE services
+      tags: tftp
+      block:
+        - name: install TFTP and PXE
+          dnf:
+            name:
+              - tftp-server
+              - ipxe-bootimgs
+            state: present
+
+        - name: And copying tftp stuff to where tftp server can find it
+          copy:
+            dest: /var/lib/tftpboot
+            remote_src: yes
+            src: "/usr/share/ipxe/{{ item }}"
+          with_items:
+            - undionly.kpxe
+            - ipxe-x86_64.efi
+
+        - name: Set up conf file for pxe on http
+          template:
+            src: "templates/boot.ipxe.j2"
+            dest: "/var/www/html/boot.ipxe"
+
+
+
+        - name: Starting TFTP service
+          service:
+            enabled: yes
+            name: tftp
+            state: restarted
+
+        - name: Create tftp config dir
+          file:
+            path: /var/lib/tftpboot/pxelinux.cfg
+            state: directory
+
+        - name: Create pxe config dir
+          file:
+            path: /var/www/html/pxelinux.cfg
+            state: directory
+
+
+
+        - name: Create tftp config
+          template:
+            mode: 0644
+            src: "templates/pxelinux_config.j2"
+            dest: "/var/www/html/pxelinux.cfg/{{ item.mac | regex_replace(':','-') | lower }}"
+          loop: "{{ dhcp_hosts }}"
+          when: not item.maintenance | default(False)
+          tags: tftp_config
+
+
+
+

@@ -1,0 +1,9 @@
+if exists user-class and option user-class = "iPXE"  
+{
+filename "http://{{ infra_http.address }}:{{ infra_http.port }}/boot.ipxe";
+}
+else
+{
+filename "undionly.kpxe";
+}
+

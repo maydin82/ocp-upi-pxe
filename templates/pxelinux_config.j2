@@ -1,0 +1,8 @@
+#!ipxe
+
+kernel http://{{ infra_http.address }}:{{ infra_http.port }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-kernel-x86_64  ip={{ item.pxe_nic }}:dhcp bond=bond1:{{ item.machine_nics | join(',') }}:mode=active-backup:9000 ip=bond1:none vlan={{ machine_net_bond_name }}.{{ machine_net_vlan }}:bond1 ip={{ item.machine_ip }}::{{ machine_net_gw }}:{{ machine_net_mask }}:{{ item.name }}.{{ base_dns_name }}:{{ machine_net_bond_name }}.{{ machine_net_vlan }}:none   rd.neednet=1 coreos.inst=yes coreos.inst.install_dev={{ item.install_dev }} coreos.inst.image_url=http://{{ infra_http.address }}:{{ infra_http.port }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-metal.x86_64.raw.gz coreos.inst.ignition_url=http://{{ infra_http.address }}:{{ infra_http.port }}/{{ item.role }}.ign coreos.live.rootfs_url=http://{{ infra_http.address }}:{{ infra_http.port }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-rootfs.x86_64.img coreos.inst.insecure
+
+initrd   http://{{ infra_http.address }}:{{ infra_http.port }}/rhcos-{{ rhcos_version }}.{{ rhcos_subversion }}-x86_64-live-initramfs.x86_64.img
+
+boot
+
